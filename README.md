@@ -1,6 +1,7 @@
 # WebUntis Timetable to ICS
 
-[![Update Calendar and Deploy to GitHub Pages](https://github.com/Chaos02/WebUntisTimeTableToIcs/actions/workflows/GeneratePage.yml/badge.svg)](https://github.com/Chaos02/WebUntisTimeTableToIcs/actions/workflows/GeneratePage.yml) | Last Push: [![Update Calendar and Deploy to GitHub Pages](https://github.com/Chaos02/WebUntisTimeTableToIcs/actions/workflows/GeneratePage.yml/badge.svg?event=push)](https://github.com/Chaos02/WebUntisTimeTableToIcs/actions/workflows/GeneratePage.yml)
+[![Update Calendar and Deploy to GitHub Pages](https://github.com/Chaos02/WebUntisTimeTableToIcs/actions/workflows/GeneratePage.yml/badge.svg)](https://github.com/Chaos02/WebUntisTimeTableToIcs/actions/workflows/GeneratePage.yml) Last Push: [![Update Calendar and Deploy to GitHub Pages](https://github.com/Chaos02/WebUntisTimeTableToIcs/actions/workflows/GeneratePage.yml/badge.svg?event=push)](https://github.com/Chaos02/WebUntisTimeTableToIcs/actions/workflows/GeneratePage.yml) [![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FChaos02%2FWebUntisTimeTableToIcs%2Factions%2Fworkflows%2F119631616%2Fruns%3Fstatus%3Dcompleted%26per_page%3D1&query=%24.workflow_runs%5B0%5D.run_started_at&label=Last%20Successful%20Run%3A)](https://github.com/Chaos02/WebUntisTimeTableToIcs/actions/workflows/GeneratePage.yml)
+
 
 Scrapes the official API the website uses and processes the entries into a (or multiple) subscribable ICS files.
 
@@ -8,9 +9,30 @@ Scrapes the official API the website uses and processes the entries into a (or m
 
 1. Fork this repository
 2. Enable GitHub Pages with workflow as source.
-3. Store the environment variables `BASE_URL`, `ELEMENT_ID`, `OVERRIDE_SUMMARIES`, `COOKIE` and `TENANT_ID` in the repos **secrets**
-4. Adjust cronjob in ./.github/workflows/GeneratePage.yml to your needs.
-5. Adjust step `Run PowerShell Script and Capture Output` if you don't want to append to a previous ICS or override course names
+3. Store the environment variables `BASE_URL`, `ELEMENT_ID`, `OVERRIDE_SUMMARIES`, `COOKIE` and `TENANT_ID` in the repos **secrets**:
+    - BASE_URL: `#####.webuntis.com` (Your officially given WebUntis website, REQUIRES)
+    - COOKIE: `##################` (Get by opening official page with dev tools, right click the request (see below) and `Copy as PowerShell`)
+    - ELEMENT_ID: `####` (Course ID, 4 digits long, REQUIRED)
+    - OVERRIDE_SUMMARIES: `@{"GK" = "GK, Gemeinschaftskunde";"LBTL1" = "EL, Elektrotechnik";...}` (opt.)
+    - CULTURE: `de-DE` (Adjust to your preference, any [.NET recognized language tag](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-lcid/a9eac961-e77d-41a6-90a5-ce1a8b0cdb9c)) (opt.)
+    - TENANT_ID: `#######` (School ID under this instance (REQUIRED))
+5. Adjust cronjob in ./.github/workflows/GeneratePage.yml to your needs.
+6. Adjust step `Run PowerShell Script and Capture Output` if you don't want to append to a previous ICS or override course names
+
+<details>
+<summary>How to get Parameters?</summary>
+
+### Acquiring Parameters
+
+Open your webuntis instance in a web browser with development tools, navigate to your timetable.
+Copy and open the share-able URL: 
+![Screenshot URL Button](https://i.imgur.com/EeZ8WyX.png)
+( -> `https://tipo.webuntis.com/WebUntis?school=*************#/basic/timetablePublic/class?date=***********&entityId=<ELEMENT_ID>`)
+
+Then, locate the Web Request starting with `entries` and use the **redacted highlighted Values** for the Secrets:
+![Screenshot Dev Tools](https://i.imgur.com/ElEUWak.png)
+(`entity_id` will become the ELEMENT_ID parameter)
+</details>
 
 ## Overview
 
@@ -24,7 +46,7 @@ This repository contains a GitHub Actions workflow and a PowerShell script to ge
 
 - `baseUrl`: The base URL for the HTTP requests.
 - `elementType`: The return type of the request (default is `1`, I don't know what other values might return from the API).
-- `elementId`: The ID of the classes timetable. (Get from URL or Chrome Dev tools)
+- `elementId`: The ID of the classes timetable. (see [Acquiring Parameters]) 
 - `date`: An array of dates (either as strings or DateTime objects) for which to retrieve timetable data. The default is the current week and the next three weeks.
 - `OutputFilePath`: The output file path for the ICS file (default is `calendar.ics`).
 - `dontCreateMultiDayEvents`: If set, generating "summary" multi-day events will be skipped.
@@ -34,22 +56,12 @@ This repository contains a GitHub Actions workflow and a PowerShell script to ge
 - `splitByOverrides`: If set, the timetable data will be split into separate ICS files for each course defined in overrideSummaries and the remaining misc. classes.
 - `outAllFormats`: If set, the timetable data will be output in all formats.
 - `culture`: If set, uses a specific culture for datetime formatting.
-- `cookie`: The cookie value for authentication.
-- `tenantId`: The tenant ID for authentication.
+- `cookie`: The cookie value for "authentication" (bot-prevention?).
+- `tenantId`: The tenant ID for authentication. (see [Acquiring Parameters]) 
 
 ### Workflow: `GeneratePage.yml`
 
-The GitHub Actions workflow `GeneratePage.yml` is designed to update and deploy the ICS calendar file to GitHub Pages.
-Configure the following secrets in your repository according to the parameters:
-
-- BASE_URL: `#####.webuntis.com` (Your officially given WebUntis website)
-- COOKIE: `##################` (Get by opening official page with dev tools and copy API request)
-- ELEMENT_ID: `####` (Course ID, 4 digits long, get from URL via official website)
-- OVERRIDE_SUMMARIES: `@{"GK" = "GK, Gemeinschaftskunde";"LBTL1" = "EL, Elektrotechnik";...}`
-- CULTURE: `de-DE` (Adjust to your preference, any [.NET recognized language tag](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-lcid/a9eac961-e77d-41a6-90a5-ce1a8b0cdb9c))
-- TENANT_ID: `#######` (Get by opening official page with dev tools and copy http request as PowerShell)
-
-The workflow performs the following steps:
+The GitHub Actions workflow `GeneratePage.yml` is designed to update and deploy the ICS calendar file to GitHub Pages using the following steps:
 
 1. **Download Previous ICS**: Downloads the previous ICS artifact if available.
 2. **Run PowerShell Script**: Executes the PowerShell script to generate a new ICS file.
